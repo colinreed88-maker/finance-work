@@ -187,9 +187,138 @@
             .project-card { padding: 18px 20px; gap: 14px; }
             .project-icon { width: 44px; height: 44px; font-size: 20px; }
         }
+
+        /* ── Password Gate ── */
+        .password-gate {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .password-gate.hidden {
+            display: none;
+        }
+
+        .pw-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 48px 44px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 40px rgba(44, 40, 37, 0.08);
+        }
+
+        .pw-card .pw-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--surface2);
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+
+        .pw-card h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .pw-card .pw-sub {
+            color: var(--text3);
+            font-size: 13.5px;
+            margin-bottom: 28px;
+        }
+
+        .pw-card input[type="password"] {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            color: var(--text);
+            background: var(--surface2);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .pw-card input[type="password"]:focus {
+            border-color: var(--accent);
+        }
+
+        .pw-card input[type="password"].error {
+            border-color: #C45B3E;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        .pw-card button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 14px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .pw-card button:hover {
+            opacity: 0.9;
+        }
+
+        .pw-error-msg {
+            color: #C45B3E;
+            font-size: 13px;
+            margin-top: 12px;
+            min-height: 20px;
+        }
+
+        .site-content {
+            display: none;
+        }
+
+        .site-content.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Password Gate -->
+    <div class="password-gate" id="passwordGate">
+        <div class="pw-card">
+            <div class="pw-icon">🔒</div>
+            <h2>Confidential</h2>
+            <p class="pw-sub">Enter the password to access these resources.</p>
+            <input type="password" id="pwInput" placeholder="Password" autocomplete="off" />
+            <button id="pwSubmit">Continue</button>
+            <div class="pw-error-msg" id="pwError"></div>
+        </div>
+    </div>
+
+    <!-- Site Content (hidden until authenticated) -->
+    <div class="site-content" id="siteContent">
 
     <div class="container">
 
@@ -235,6 +364,49 @@
         </div>
 
     </div>
+
+    </div><!-- /site-content -->
+
+    <script>
+        async function sha256(str) {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Current password: flow2026
+        const VALID_HASH = 'e68418ce4f904cc35a1cc8968d2475e50cb8e4787b0c86129e0b0b9981e54568';
+
+        const gate = document.getElementById('passwordGate');
+        const content = document.getElementById('siteContent');
+        const input = document.getElementById('pwInput');
+        const btn = document.getElementById('pwSubmit');
+        const errMsg = document.getElementById('pwError');
+
+        // Check if already authenticated this session
+        if (sessionStorage.getItem('eq_auth') === 'true') {
+            gate.classList.add('hidden');
+            content.classList.add('visible');
+        }
+
+        async function tryUnlock() {
+            const val = input.value.trim();
+            if (!val) { input.focus(); return; }
+            const hash = await sha256(val);
+            if (hash === VALID_HASH) {
+                sessionStorage.setItem('eq_auth', 'true');
+                gate.classList.add('hidden');
+                content.classList.add('visible');
+            } else {
+                input.classList.add('error');
+                errMsg.textContent = 'Incorrect password. Please try again.';
+                setTimeout(() => input.classList.remove('error'), 500);
+            }
+        }
+
+        btn.addEventListener('click', tryUnlock);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+        input.focus();
+    </script>
 
 </body>
 </html>
